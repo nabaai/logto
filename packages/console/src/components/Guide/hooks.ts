@@ -17,6 +17,7 @@ const defaultStructuredMetadata: StructuredAppGuideMetadata = {
   Native: [],
   MachineToMachine: [],
   Protected: [],
+  SAML: [],
   ThirdParty: [],
 };
 
@@ -36,10 +37,16 @@ export const useAppGuideMetadata = (): {
 } => {
   const appGuides = useMemo(
     () =>
-      guides.filter(
-        ({ metadata: { target, isCloud, isDevFeature } }) =>
-          target !== 'API' && (isCloudEnv || !isCloud) && (isDevFeaturesEnabled || !isDevFeature)
-      ),
+      guides
+        .filter(
+          ({ metadata: { target, isCloud, isDevFeature } }) =>
+            target !== 'API' && (isCloudEnv || !isCloud) && (isDevFeaturesEnabled || !isDevFeature)
+          /**
+           * Show SAML guides when it is:
+           * 1. Cloud env
+           */
+        )
+        .filter(({ metadata: { target } }) => target !== ApplicationType.SAML || isCloudEnv),
     []
   );
 
@@ -100,9 +107,7 @@ export const useAppGuideMetadata = (): {
           return accumulated;
         }
 
-        // We have ensured that SAML applications are always third party in DB schema, we use `||` here to make TypeScript happy.
-        // TODO: @darcy fix this when SAML third-party app guide is ready
-        if (target === ApplicationType.SAML || isThirdParty) {
+        if (isThirdParty) {
           return {
             ...accumulated,
             [thirdPartyAppCategory]: [...accumulated[thirdPartyAppCategory], guide],

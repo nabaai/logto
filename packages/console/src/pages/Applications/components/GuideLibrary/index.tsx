@@ -36,7 +36,10 @@ function GuideLibrary({ className, hasCardBorder, hasCardButton, onSelectGuide }
   const [filterCategories, setFilterCategories] = useState<AppGuideCategory[]>([]);
   const { getFilteredAppGuideMetadata, getStructuredAppGuideMetadata } = useAppGuideMetadata();
   const isApplicationCreateModal = pathname.includes('/applications/create');
-  const { currentSubscriptionQuota } = useContext(SubscriptionDataContext);
+  const {
+    currentSubscriptionQuota,
+    currentSubscription: { isEnterprisePlan },
+  } = useContext(SubscriptionDataContext);
 
   const structuredMetadata = useMemo(
     () => getStructuredAppGuideMetadata({ categories: filterCategories }),
@@ -93,6 +96,11 @@ function GuideLibrary({ className, hasCardBorder, hasCardButton, onSelectGuide }
                   <CheckboxGroup
                     className={styles.checkboxGroup}
                     options={allAppGuideCategories
+                      /**
+                       * Show SAML guides when it is:
+                       * 1. Cloud env
+                       */
+                      .filter((category) => category !== 'SAML' || isCloud)
                       .filter((category) => isCloud || category !== 'Protected')
                       .map((category) => ({
                         title: `guide.categories.${category}`,
@@ -108,6 +116,12 @@ function GuideLibrary({ className, hasCardBorder, hasCardButton, onSelectGuide }
                                   plan={latestProPlanId}
                                 />
                               ),
+                            }
+                        ),
+                        ...cond(
+                          isCloud &&
+                            category === 'SAML' && {
+                              tag: <FeatureTag isEnterprise isVisible={!isEnterprisePlan} />,
                             }
                         ),
                       }))}

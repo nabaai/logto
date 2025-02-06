@@ -1,0 +1,62 @@
+version: '3.9'
+
+services:
+  nginx:
+    image: nginx:stable-alpine
+    container_name: nginx
+    volumes:
+      - ${NGINX_CONF}:/etc/nginx/nginx.conf:ro
+    ports:
+      - "${NGINX_PORT_HTTP}:80"
+      - "${NGINX_PORT_HTTPS}:443"
+    restart: unless-stopped
+    ipc: host
+    depends_on:
+      - logto
+    networks:
+      - nginx-networks
+
+  logto:
+    image: svhd/logto:${TAG-latest}
+    container_name: logto
+    entrypoint: ["sh", "-c", "npm run cli db seed -- --swe && npm start"]
+    restart: always
+    ports:
+      - "${LOGTO_PORT}:${LOGTO_PORT}"
+      - "${LOGTO_ADMIN_PORT}:${LOGTO_ADMIN_PORT}"
+    environment:
+      TRUST_PROXY_HEADER: ${TRUST_PROXY_HEADER}
+      DB_URL: postgres://postgres:p0stgr3s@postgres:5432/logto
+      ENDPOINT: ${LOGTO_ENDPOINT}
+      ADMIN_ENDPOINT: ${LOGTO_ADMIN_ENDPOINT}
+      PORT: ${LOGTO_PORT}
+      ADMIN_PORT: ${LOGTO_ADMIN_PORT}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - nginx-networks
+
+  postgres:
+    image: postgres:17-alpine
+    user: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: p0stgr3s
+    volumes:
+      - logto-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - nginx-networks
+
+
+networks:
+  nginx-networks:
+    driver: bridge
+
+volumes:
+  logto-db-data:
